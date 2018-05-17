@@ -8,7 +8,6 @@ module GitlabWebHook
 
     java_import Java.java.util.logging.Logger
     java_import Java.java.util.logging.Level
-    java_import Java.org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
 
     def initialize(project, logger = Logger.getLogger(self.class.name))
       raise ArgumentError.new('project is required') unless project

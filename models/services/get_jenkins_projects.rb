@@ -6,7 +6,7 @@ require_relative '../services/security'
 include Java
 
 java_import Java.hudson.model.AbstractProject
-java_import Java.org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
+java_import Java.jenkins.branch.MultiBranchProject
 java_import Java.hudson.matrix.MatrixConfiguration
 
 java_import Java.hudson.plugins.git.GitSCM
@@ -53,7 +53,7 @@ module GitlabWebHook
       projects = nil
       Security.impersonate(ACL::SYSTEM) do
         temp = Java.jenkins.model.Jenkins.instance.getAllItems(AbstractProject.java_class).to_a
-        temp.concat Java.jenkins.model.Jenkins.instance.getAllItems(WorkflowMultiBranchProject.java_class).to_a
+        temp.concat Java.jenkins.model.Jenkins.instance.getAllItems(MultiBranchProject.java_class).to_a
         projects = temp.map do |jenkins_project|
           Project.new(jenkins_project) unless jenkins_project.java_kind_of?(MatrixConfiguration)
         end - [nil]

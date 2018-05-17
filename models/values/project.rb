@@ -17,7 +17,7 @@ java_import Java.hudson.plugins.git.util.InverseBuildChooser
 java_import Java.hudson.plugins.git.util.DefaultBuildChooser
 java_import Java.hudson.plugins.git.extensions.impl.PreBuildMerge
 java_import Java.hudson.plugins.git.extensions.impl.RelativeTargetDirectory
-java_import Java.org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
+java_import Java.jenkins.branch.MultiBranchProject
 java_import Java.jenkins.scm.api.SCMSource
 
 MultipleScmsPluginAvailable = true
@@ -61,7 +61,7 @@ module GitlabWebHook
     end
 
     def multibranchProject?
-      jenkins_project.java_kind_of?(WorkflowMultiBranchProject)
+      jenkins_project.java_kind_of?(MultiBranchProject)
     end
 
     def parametrized?
