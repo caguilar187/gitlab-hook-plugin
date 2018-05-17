@@ -17,8 +17,14 @@ java_import Java.hudson.plugins.git.util.InverseBuildChooser
 java_import Java.hudson.plugins.git.util.DefaultBuildChooser
 java_import Java.hudson.plugins.git.extensions.impl.PreBuildMerge
 java_import Java.hudson.plugins.git.extensions.impl.RelativeTargetDirectory
-java_import Java.jenkins.branch.MultiBranchProject
-java_import Java.jenkins.scm.api.SCMSource
+
+MultiBranchPluginAvailable = true
+begin
+  java_import Java.jenkins.branch.MultiBranchProject
+  java_import Java.jenkins.scm.api.SCMSource
+rescue NameError
+  MultiBranchPluginAvailable = false
+end
 
 MultipleScmsPluginAvailable = true
 begin
@@ -61,7 +67,10 @@ module GitlabWebHook
     end
 
     def multibranchProject?
-      jenkins_project.java_kind_of?(MultiBranchProject)
+      if MultiBranchPluginAvailable
+        return jenkins_project.java_kind_of?(MultiBranchProject)
+      end
+      return false
     end
 
     def parametrized?

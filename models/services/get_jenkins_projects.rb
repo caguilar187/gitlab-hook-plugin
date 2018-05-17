@@ -6,7 +6,6 @@ require_relative '../services/security'
 include Java
 
 java_import Java.hudson.model.AbstractProject
-java_import Java.jenkins.branch.MultiBranchProject
 java_import Java.hudson.matrix.MatrixConfiguration
 
 java_import Java.hudson.plugins.git.GitSCM
@@ -14,6 +13,13 @@ java_import Java.hudson.plugins.git.BranchSpec
 java_import Java.hudson.plugins.git.UserRemoteConfig
 java_import Java.hudson.plugins.git.browser.GitLab
 java_import Java.hudson.plugins.git.util.DefaultBuildChooser
+
+MultiBranchPluginAvailable = true
+begin
+  java_import Java.jenkins.branch.MultiBranchProject
+rescue NameError
+  MultiBranchPluginAvailable = false
+end
 
 module GitlabWebHook
   class GetJenkinsProjects
@@ -53,7 +59,9 @@ module GitlabWebHook
       projects = nil
       Security.impersonate(ACL::SYSTEM) do
         temp = Java.jenkins.model.Jenkins.instance.getAllItems(AbstractProject.java_class).to_a
-        temp.concat Java.jenkins.model.Jenkins.instance.getAllItems(MultiBranchProject.java_class).to_a
+        if MultiBranchPluginAvailable
+          temp.concat Java.jenkins.model.Jenkins.instance.getAllItems(MultiBranchProject.java_class).to_a
+        end
         projects = temp.map do |jenkins_project|
           Project.new(jenkins_project) unless jenkins_project.java_kind_of?(MatrixConfiguration)
         end - [nil]
