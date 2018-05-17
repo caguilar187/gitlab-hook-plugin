@@ -40,7 +40,7 @@ module GitlabWebHook
     include Settings
     extend Forwardable
 
-    def_delegators :@jenkins_project, :schedulePolling, :scheduleBuild, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description
+    def_delegators :@jenkins_project, :schedulePolling, :scheduleBuild, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getProperty, :delete, :description
 
     alias_method :buildable?, :isBuildable
     alias_method :name, :fullName
@@ -71,6 +71,13 @@ module GitlabWebHook
         return jenkins_project.java_kind_of?(MultiBranchProject)
       end
       return false
+    end
+
+    def getQuietPeriod
+      if multibranchProject?
+        return 0
+      end
+      return jenkins_project.getQuietPeriod()
     end
 
     def parametrized?
