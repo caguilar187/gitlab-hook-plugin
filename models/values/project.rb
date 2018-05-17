@@ -87,6 +87,7 @@ module GitlabWebHook
 
     def matches?(details, branch = false, exactly = false)
       return false unless buildable?
+      return true if multibranchProject?
       if merge_to?( branch || details.branch )
         logger.info("project #{self} merge target matches #{branch || details.branch}")
         return true
@@ -197,9 +198,7 @@ module GitlabWebHook
             # When BranchSpec seems to be a 'refs' style, we use the reference supplied by
             # gitlab, which is the reference on its local repository. In any other case, we
             # follow the classic gitlab-hook processing.
-            if multibranchProject?
-              token = branch #GitSCM will match this for MultiBranchProjects
-            elsif scm_branch.name.start_with?('refs/')
+            if scm_branch.name.start_with?('refs/')
               token = refspec
             elsif scm_branch.name.start_with?('*/')
               token = "*/#{branch}"
@@ -231,13 +230,9 @@ module GitlabWebHook
         end
       end
 
-      if multibranchProject?
-        !matched_branch.nil?
-      else
-        @matched_scm = matching_scms.find { |scm| scm.buildChooser.java_kind_of?(InverseBuildChooser) } unless matched_scm
-        build_chooser = matched_scm.buildChooser if matched_scm
-        build_chooser && build_chooser.java_kind_of?(InverseBuildChooser) ? matched_branch.nil? : !matched_branch.nil?
-      end
+      @matched_scm = matching_scms.find { |scm| scm.buildChooser.java_kind_of?(InverseBuildChooser) } unless matched_scm
+      build_chooser = matched_scm.buildChooser if matched_scm
+      build_chooser && build_chooser.java_kind_of?(InverseBuildChooser) ? matched_branch.nil? : !matched_branch.nil?
     end
 
     def setup_scms
