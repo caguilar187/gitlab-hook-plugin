@@ -199,8 +199,6 @@ module GitlabWebHook
             scm_refspecs = repo.getFetchRefSpecs().select { |scm_refspec| scm_refspec.matchSource(refspec) }
             matched_refspecs.concat(scm_refspecs)
             scm_branch_name = scm_branch.name.match('/') ? scm_branch.name : "#{repo.name}/#{scm_branch.name}"
-            logger.info(scm_branch_name)
-            logger.info(token)
             scm_refspecs.any? && (exactly ? scm_branch_name == token : scm_branch.matches(token))
           end
         end
@@ -237,11 +235,8 @@ module GitlabWebHook
       @scms = []
       if multibranchProject?
         jenkins_project.getSCMSources.to_a.each { |scm_source|
-          logger.info(scm_source.id)
           scm_source.fetch(nil).to_a.each { |head|
-            logger.info(head.name)
             scm = scm_source.build(head)
-            logger.info(scm.key)
             if scm.java_kind_of?(GitSCM)
               @scms.push(scm)
             end
