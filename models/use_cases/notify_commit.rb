@@ -6,6 +6,7 @@ module GitlabWebHook
 
     java_import Java.java.util.logging.Logger
     java_import Java.java.util.logging.Level
+    java_import Java.org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
 
     def initialize(project, logger = Logger.getLogger(NotifyCommit.class.name))
       raise ArgumentError.new('project is required') unless project
@@ -18,6 +19,9 @@ module GitlabWebHook
       return "#{project} is not buildable (it is disabled or not saved), skipping polling" unless project.buildable?
 
       begin
+        if project.multibranchProject
+          return "#{project} scheduled for polling" if project.scheduleBuild
+        end
         return "#{project} scheduled for polling" if project.schedulePolling
       rescue java.lang.Exception => e
         # avoid method signature warnings

@@ -14,8 +14,11 @@ java_import Java.hudson.util.StreamTaskListener
 java_import Java.hudson.util.NullStream
 java_import Java.hudson.plugins.git.GitSCM
 java_import Java.hudson.plugins.git.util.InverseBuildChooser
+java_import Java.hudson.plugins.git.util.DefaultBuildChooser
 java_import Java.hudson.plugins.git.extensions.impl.PreBuildMerge
 java_import Java.hudson.plugins.git.extensions.impl.RelativeTargetDirectory
+java_import Java.org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject
+java_import Java.jenkins.scm.api.SCMSource
 
 MultipleScmsPluginAvailable = true
 begin
@@ -31,9 +34,8 @@ module GitlabWebHook
     include Settings
     extend Forwardable
 
-    def_delegators :@jenkins_project, :schedulePolling, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description
+    def_delegators :@jenkins_project, :schedulePolling, :scheduleBuild, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description
 
-    alias_method :parametrized?, :isParameterized
     alias_method :buildable?, :isBuildable
     alias_method :name, :fullName
     alias_method :to_s, :fullName
@@ -56,6 +58,17 @@ module GitlabWebHook
           match_scm(branch, "refs/heads/#{branch}") # exact or not? Account for the '*' instead of asterisk
         end
       end
+    end
+
+    def multibranchProject?
+      jenkins_project.java_kind_of?(WorkflowMultiBranchProject)
+    end
+
+    def parametrized?
+      if !multibranchProject?
+        return @jenkins_project.isParameterized
+      end
+      return false
     end
 
     def matches_uri?(details_uri)
@@ -186,6 +199,8 @@ module GitlabWebHook
             scm_refspecs = repo.getFetchRefSpecs().select { |scm_refspec| scm_refspec.matchSource(refspec) }
             matched_refspecs.concat(scm_refspecs)
             scm_branch_name = scm_branch.name.match('/') ? scm_branch.name : "#{repo.name}/#{scm_branch.name}"
+            logger.info(scm_branch_name)
+            logger.info(token)
             scm_refspecs.any? && (exactly ? scm_branch_name == token : scm_branch.matches(token))
           end
         end
@@ -207,19 +222,39 @@ module GitlabWebHook
         end
       end
 
-      @matched_scm = matching_scms.find { |scm| scm.buildChooser.java_kind_of?(InverseBuildChooser) } unless matched_scm
-      build_chooser = matched_scm.buildChooser if matched_scm
-      build_chooser && build_chooser.java_kind_of?(InverseBuildChooser) ? matched_branch.nil? : !matched_branch.nil?
+      if multibranchProject?
+        @matched_scm = matching_scms.find { |scm| scm.buildChooser.java_kind_of?(DefaultBuildChooser) } unless matched_scm
+        build_chooser = matched_scm.buildChooser if matched_scm
+        build_chooser && build_chooser.java_kind_of?(DefaultBuildChooser) ? matched_branch.nil? : !matched_branch.nil?
+      else
+        @matched_scm = matching_scms.find { |scm| scm.buildChooser.java_kind_of?(InverseBuildChooser) } unless matched_scm
+        build_chooser = matched_scm.buildChooser if matched_scm
+        build_chooser && build_chooser.java_kind_of?(InverseBuildChooser) ? matched_branch.nil? : !matched_branch.nil?
+      end
     end
 
     def setup_scms
       @scms = []
-      if jenkins_project.scm
-        if jenkins_project.scm.java_kind_of?(GitSCM)
-          @scms << jenkins_project.scm
-        elsif MultipleScmsPluginAvailable && jenkins_project.scm.java_kind_of?(MultiSCM)
-          @multiscm = true
-          @scms.concat(jenkins_project.scm.getConfiguredSCMs().select { |scm| scm.java_kind_of?(GitSCM) })
+      if multibranchProject?
+        jenkins_project.getSCMSources.to_a.each { |scm_source|
+          logger.info(scm_source.id)
+          scm_source.fetch(nil).to_a.each { |head|
+            logger.info(head.name)
+            scm = scm_source.build(head)
+            logger.info(scm.key)
+            if scm.java_kind_of?(GitSCM)
+              @scms.push(scm)
+            end
+          }
+        }
+      else
+        if jenkins_project.scm
+          if jenkins_project.scm.java_kind_of?(GitSCM)
+            @scms << jenkins_project.scm
+          elsif MultipleScmsPluginAvailable && jenkins_project.scm.java_kind_of?(MultiSCM)
+            @multiscm = true
+            @scms.concat(jenkins_project.scm.getConfiguredSCMs().select { |scm| scm.java_kind_of?(GitSCM) })
+          end
         end
       end
     end
